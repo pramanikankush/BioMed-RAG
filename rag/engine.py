@@ -3,7 +3,9 @@ from typing import List, Dict, Any, Tuple, AsyncIterator
 import json
 import numpy as np
 
-from langchain_community.embeddings import SentenceTransformerEmbeddings
+import requests
+import time
+from langchain_core.embeddings import Embeddings
 from langchain_community.vectorstores import FAISS
 from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
@@ -17,10 +19,66 @@ _embeddings = None
 _db = None
 _llm = None
 
+class HuggingFaceAPIEmbeddings(Embeddings):
+    def __init__(self, model_name: str, api_key: str = None):
+        self.model_name = model_name
+        self.api_key = api_key
+        self.api_url = f"https://router.huggingface.co/hf-inference/models/{model_name}"
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        headers = {}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        
+        # Retry loop for 503 Service Unavailable (loading model)
+        for attempt in range(5):
+            try:
+                response = requests.post(
+                    self.api_url,
+                    headers=headers,
+                    json={"inputs": texts, "options": {"wait_for_model": True}},
+                    timeout=30
+                )
+                if response.status_code == 200:
+                    result = response.json()
+                    if isinstance(result, list):
+                        return result
+                    else:
+                        raise ValueError(f"Unexpected response format from Hugging Face: {result}")
+                elif response.status_code == 503:
+                    # Model is loading, wait and retry
+                    time.sleep(5)
+                    continue
+                else:
+                    raise Exception(f"HF API Error (Status {response.status_code}): {response.text}")
+            except requests.exceptions.RequestException as e:
+                if attempt == 4:
+                    raise
+                time.sleep(2)
+        raise Exception("Failed to get embeddings from Hugging Face after multiple attempts.")
+
+    def embed_query(self, text: str) -> List[float]:
+        result = self.embed_documents([text])
+        return result[0]
+
 def get_embeddings():
     global _embeddings
     if _embeddings is None:
-        _embeddings = SentenceTransformerEmbeddings(model_name=config.EMBEDDING_MODEL)
+        if config.HF_TOKEN:
+            # Use Hugging Face serverless Inference API (saves memory and avoids downloading models)
+            _embeddings = HuggingFaceAPIEmbeddings(
+                model_name=config.EMBEDDING_MODEL,
+                api_key=config.HF_TOKEN
+            )
+        else:
+            try:
+                from langchain_community.embeddings import SentenceTransformerEmbeddings
+                _embeddings = SentenceTransformerEmbeddings(model_name=config.EMBEDDING_MODEL)
+            except ImportError:
+                raise ImportError(
+                    "To use local embeddings, please install sentence-transformers: 'pip install sentence-transformers'. "
+                    "Alternatively, set the 'HF_TOKEN' environment variable to use the serverless Hugging Face API (recommended for Render)."
+                )
     return _embeddings
 
 def get_db():

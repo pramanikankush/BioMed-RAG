@@ -164,3 +164,13 @@ data/
 faiss_index/
 *.log
 *.err
+
+# User uploads and binary databases
+*.pdf
+*.docx
+*.csv
+*.parquet
+*.pkl
+*.faiss
+*.db
+*.sqlite*
