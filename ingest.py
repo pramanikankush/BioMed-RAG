@@ -1,14 +1,14 @@
 import os
 from langchain_community.embeddings import SentenceTransformerEmbeddings
-from langchain_community.document_loaders import UnstructuredFileLoader, DirectoryLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import Qdrant
+from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import FAISS
 
 embeddings = SentenceTransformerEmbeddings(model_name="NeuML/pubmedbert-base-embeddings")
 
 print(embeddings)
 
-loader = DirectoryLoader('data/', glob="**/*.pdf", show_progress=True, loader_cls=UnstructuredFileLoader)
+loader = DirectoryLoader('data/', glob="**/*.pdf", show_progress=True, loader_cls=PyPDFLoader)
 
 documents = loader.load()
 
@@ -18,13 +18,7 @@ texts = text_splitter.split_documents(documents)
 
 print(texts[1])
 
-url = "http://localhost:6333"
-qdrant = Qdrant.from_documents(
-    texts,
-    embeddings,
-    url=url,
-    prefer_grpc=False,
-    collection_name="vector_db"
-)
+db = FAISS.from_documents(texts, embeddings)
+db.save_local("faiss_index")
 
 print("Vector DB Successfully Created!")
