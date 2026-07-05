@@ -4,6 +4,19 @@ A professional, production-grade Medical Retrieval Augmented Generation (RAG) Sa
 
 ---
 
+## Screenshots
+
+### 1. Medical Assistant Chat Feed
+![Medical Assistant Chat Feed](assets/chat_interface.png)
+
+### 2. Document Library (Drag & Drop Ingestion)
+![Document Library](assets/document_library.png)
+
+### 3. System Diagnostics & Health Monitor
+![System Diagnostics](assets/system_diagnostics.png)
+
+---
+
 ## Key Features
 
 1. **UI/UX (Premium SaaS Dashboard):**
