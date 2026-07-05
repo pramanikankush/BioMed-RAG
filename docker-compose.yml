@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   rag-app:
     build: .
@@ -12,3 +10,9 @@ services:
       - ./data:/app/data
       - ./faiss_index:/app/faiss_index
     restart: always
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/admin/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s

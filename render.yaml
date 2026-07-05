@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: medical-rag
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    # Render assigns PORT automatically; the Dockerfile reads $PORT at runtime
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false          # Set this in Render dashboard (secret)
+      - key: HF_TOKEN
+        sync: false          # Set this in Render dashboard (secret)
+      - key: TAVILY_API_KEY
+        sync: false          # Optional: set in Render dashboard for web search
+    healthCheckPath: /admin/health
+    # Persistent disk for FAISS index and uploaded documents
+    disk:
+      name: rag-data
+      mountPath: /app/data
+      sizeGB: 1
