@@ -23,7 +23,9 @@ class HuggingFaceAPIEmbeddings(Embeddings):
     def __init__(self, model_name: str, api_key: str = None):
         self.model_name = model_name
         self.api_key = api_key
-        self.api_url = f"https://router.huggingface.co/hf-inference/models/{model_name}"
+        # Use feature-extraction pipeline explicitly — model is tagged as sentence-similarity
+        # on HF Hub which causes the generic /models/ endpoint to misroute to SentenceSimilarityPipeline
+        self.api_url = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{model_name}"
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         headers = {}
