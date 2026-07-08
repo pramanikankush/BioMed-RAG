@@ -2,6 +2,12 @@
 
 A professional, production-grade Medical Retrieval Augmented Generation (RAG) SaaS application featuring a premium dark-themed glassmorphism dashboard, hybrid search, streaming capabilities, file library management, and admin diagnostics.
 
+## 🚀 Live Demo
+
+**[https://biomed-rag-1.onrender.com](https://biomed-rag-1.onrender.com)**
+
+> ⚠️ Hosted on Render free tier — may take **~50 seconds** to wake up on first visit.
+
 ---
 
 ## Screenshots
@@ -27,7 +33,7 @@ A professional, production-grade Medical Retrieval Augmented Generation (RAG) Sa
    - Export responses to Markdown or download as clean local files.
 
 2. **RAG & Retrieval Architecture:**
-   - **Hybrid Retrieval:** Dense Vector search (FAISS + PubMedBERT embeddings) merged with Sparse Keyword search (scikit-learn TF-IDF Vectorizer).
+   - **Hybrid Retrieval:** Dense Vector search (FAISS + Cohere embeddings) merged with Sparse Keyword search (scikit-learn TF-IDF Vectorizer).
    - **Reciprocal Rank Fusion (RRF):** Merges dense and sparse search rankings using normalized RRF confidence scoring.
    - **Grounding checks:** Prompt constraints prevent hallucinations and return clear fallback messages when info is absent.
    - **Citations:** Source filename and document page numbers embedded directly into citation badges.
@@ -53,7 +59,7 @@ A professional, production-grade Medical Retrieval Augmented Generation (RAG) Sa
 - **Backend:** FastAPI, Uvicorn, LangChain, LangChain-Groq
 - **Frontend:** Bootstrap 5.3.0, Vanilla JavaScript, HTML5, Custom Glassmorphism CSS
 - **Vector DB:** FAISS (CPU)
-- **Embeddings:** NeuML/pubmedbert-base-embeddings (Local SentenceTransformers)
+- **Embeddings:** Cohere `embed-english-v3.0` (1024-dim, via REST API)
 - **LLM Engine:** Groq Cloud API (Llama-3.3-70b-versatile)
 
 ---
@@ -76,7 +82,8 @@ A professional, production-grade Medical Retrieval Augmented Generation (RAG) Sa
    Create a `.env` file in the project root:
    ```env
    GROQ_API_KEY=your_groq_api_key
-   TAVILY_API_KEY=your_tavily_api_key_optional
+   COHERE_API_KEY=your_cohere_api_key      # Free at dashboard.cohere.com
+   TAVILY_API_KEY=your_tavily_api_key      # Optional: for web search
    ```
 
 4. **Run the server:**
