@@ -74,8 +74,11 @@ async def log_requests(request: Request, call_next):
     response = await call_next(request)
     
     duration = time.time() - start_time
-    response.headers["X-Request-ID"] = req_id
-    response.headers["X-Process-Time"] = f"{duration:.4f}s"
+    try:
+        response.headers["X-Request-ID"] = req_id
+        response.headers["X-Process-Time"] = f"{duration:.4f}s"
+    except Exception:
+        pass  # Some streaming responses have immutable headers
     
     extra = {
         "extra_fields": {
@@ -89,9 +92,10 @@ async def log_requests(request: Request, call_next):
     logger.info(f"HTTP Request processed: {request.method} {request.url.path} -> {response.status_code}", extra=extra)
     return response
 
-# Setup directories & mount static files
-templates = Jinja2Templates(directory="templates")
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Setup directories & mount static files (use absolute paths for Docker reliability)
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+templates = Jinja2Templates(directory=os.path.join(_BASE_DIR, "templates"))
+app.mount("/static", StaticFiles(directory=os.path.join(_BASE_DIR, "static")), name="static")
 
 # Rate limiting checking dependencies
 def check_query_rate_limit(request: Request):
@@ -133,7 +137,11 @@ def sanitize_query(query: str) -> str:
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    try:
+        return templates.TemplateResponse("index.html", {"request": request})
+    except Exception as e:
+        logger.error(f"Failed to render index.html: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Template render error: {str(e)}")
 
 # Chat Session History management
 class ChatSessionRename(BaseModel):
