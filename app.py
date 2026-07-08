@@ -138,7 +138,7 @@ def sanitize_query(query: str) -> str:
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     try:
-        return templates.TemplateResponse("index.html", {"request": request})
+        return templates.TemplateResponse(request=request, name="index.html")
     except Exception as e:
         logger.error(f"Failed to render index.html: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Template render error: {str(e)}")
