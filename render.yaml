@@ -8,7 +8,9 @@ services:
       - key: GROQ_API_KEY
         sync: false          # Set this in Render dashboard (secret)
       - key: HF_TOKEN
-        sync: false          # Set this in Render dashboard (secret)
+        sync: false          # Optional fallback embeddings via HuggingFace API
+      - key: COHERE_API_KEY
+        sync: false          # Primary embeddings (free at dashboard.cohere.com) — set this!
       - key: TAVILY_API_KEY
         sync: false          # Optional: set in Render dashboard for web search
     healthCheckPath: /admin/health

@@ -19,20 +19,70 @@ _embeddings = None
 _db = None
 _llm = None
 
+class CohereAPIEmbeddings(Embeddings):
+    """
+    Cohere embed-english-v3.0 via REST API.
+    Free tier: 1000 calls/month. No extra packages needed — uses `requests`.
+    Get a free key at: https://dashboard.cohere.com
+    """
+    EMBED_URL = "https://api.cohere.com/v2/embed"
+    MODEL = "embed-english-v3.0"  # 1024-dim, best quality for medical text
+
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        self.headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+
+    def _embed(self, texts: List[str], input_type: str) -> List[List[float]]:
+        # Cohere allows max 96 texts per call — batch if needed
+        BATCH = 96
+        all_embeddings = []
+        for i in range(0, len(texts), BATCH):
+            batch = texts[i : i + BATCH]
+            payload = {
+                "model": self.MODEL,
+                "texts": batch,
+                "input_type": input_type,
+                "embedding_types": ["float"],
+            }
+            for attempt in range(4):
+                try:
+                    resp = requests.post(self.EMBED_URL, headers=self.headers, json=payload, timeout=30)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        all_embeddings.extend(data["embeddings"]["float"])
+                        break
+                    elif resp.status_code == 429:
+                        time.sleep(2 ** attempt)
+                    else:
+                        raise Exception(f"Cohere API Error ({resp.status_code}): {resp.text}")
+                except requests.exceptions.RequestException as e:
+                    if attempt == 3:
+                        raise
+                    time.sleep(2)
+        return all_embeddings
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        return self._embed(texts, input_type="search_document")
+
+    def embed_query(self, text: str) -> List[float]:
+        return self._embed([text], input_type="search_query")[0]
+
+
 class HuggingFaceAPIEmbeddings(Embeddings):
     def __init__(self, model_name: str, api_key: str = None):
         self.model_name = model_name
         self.api_key = api_key
-        # Use feature-extraction pipeline explicitly — model is tagged as sentence-similarity
-        # on HF Hub which causes the generic /models/ endpoint to misroute to SentenceSimilarityPipeline
-        self.api_url = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{model_name}"
+        # Explicit feature-extraction pipeline path on the HF router
+        self.api_url = f"https://router.huggingface.co/hf-inference/pipeline/feature-extraction/{model_name}"
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         headers = {}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
-        
-        # Retry loop for 503 Service Unavailable (loading model)
+
         for attempt in range(5):
             try:
                 response = requests.post(
@@ -46,9 +96,8 @@ class HuggingFaceAPIEmbeddings(Embeddings):
                     if isinstance(result, list):
                         return result
                     else:
-                        raise ValueError(f"Unexpected response format from Hugging Face: {result}")
+                        raise ValueError(f"Unexpected HF response: {result}")
                 elif response.status_code == 503:
-                    # Model is loading, wait and retry
                     time.sleep(5)
                     continue
                 else:
@@ -60,14 +109,17 @@ class HuggingFaceAPIEmbeddings(Embeddings):
         raise Exception("Failed to get embeddings from Hugging Face after multiple attempts.")
 
     def embed_query(self, text: str) -> List[float]:
-        result = self.embed_documents([text])
-        return result[0]
+        return self.embed_documents([text])[0]
+
 
 def get_embeddings():
     global _embeddings
     if _embeddings is None:
-        if config.HF_TOKEN:
-            # Use Hugging Face serverless Inference API (saves memory and avoids downloading models)
+        if config.COHERE_API_KEY:
+            # Primary: Cohere embed-english-v3.0 — reliable, free tier, works from Render
+            _embeddings = CohereAPIEmbeddings(api_key=config.COHERE_API_KEY)
+        elif config.HF_TOKEN:
+            # Fallback: HuggingFace router with explicit feature-extraction pipeline
             _embeddings = HuggingFaceAPIEmbeddings(
                 model_name=config.EMBEDDING_MODEL,
                 api_key=config.HF_TOKEN
@@ -78,8 +130,8 @@ def get_embeddings():
                 _embeddings = SentenceTransformerEmbeddings(model_name=config.EMBEDDING_MODEL)
             except ImportError:
                 raise ImportError(
-                    "To use local embeddings, please install sentence-transformers: 'pip install sentence-transformers'. "
-                    "Alternatively, set the 'HF_TOKEN' environment variable to use the serverless Hugging Face API (recommended for Render)."
+                    "Set COHERE_API_KEY (recommended) or HF_TOKEN to enable embeddings. "
+                    "Get a free Cohere key at https://dashboard.cohere.com"
                 )
     return _embeddings
 

@@ -8,6 +8,7 @@ load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACEHUB_API_TOKEN")
+COHERE_API_KEY = os.getenv("COHERE_API_KEY")  # Primary embedding provider (free tier at dashboard.cohere.com)
 
 # Model Configuration
 LLM_MODEL = "llama-3.3-70b-versatile"
